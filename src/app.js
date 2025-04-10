@@ -33,20 +33,14 @@ const limiter = rateLimit({
 });
 
 // Apply middleware
-
-// Replace custom CORS middleware with cors package
+app.use(helmet());
 app.use(cors({
-  origin: ['https://rifansi.fando.id', 'https://berifansi.fando.id'],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  origin: process.env.FE_URL, // ganti dengan alamat asal client
   credentials: true
 }));
-
-// Handle preflight requests
-app.options('*', cors());
 app.use(express.json());
 app.use(limiter);
-app.use(helmet());
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/projectManager')
   .then(() => {
@@ -78,8 +72,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-// Disable CORS
-
 
 module.exports = app;
