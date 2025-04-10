@@ -34,30 +34,16 @@ const limiter = rateLimit({
 
 // Apply middleware
 
-// Enhanced CORS middleware
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    'https://rifansi.fando.id',
-    'https://berifansi.fando.id'
-  ];
-  const origin = req.headers.origin;
-  
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
-    return res.sendStatus(204);
-  }
-  
-  next();
-});
+// Replace custom CORS middleware with cors package
+app.use(cors({
+  origin: ['https://rifansi.fando.id', 'https://berifansi.fando.id'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
+}));
+
+// Handle preflight requests
+app.options('*', cors());
 app.use(express.json());
 app.use(limiter);
 app.use(helmet());
