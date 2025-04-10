@@ -33,15 +33,26 @@ const limiter = rateLimit({
 });
 
 // Apply middleware
-app.use(helmet());
-// CORS middleware
+
+// Enhanced CORS middleware
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = [
+    'https://rifansi.fando.id',
+    'https://berifansi.fando.id'
+  ];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
     return res.sendStatus(204);
   }
   
@@ -49,7 +60,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 app.use(limiter);
-
+app.use(helmet());
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/projectManager')
   .then(() => {
