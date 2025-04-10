@@ -1,4 +1,4 @@
-const Spk = require('../models/spk');
+const Spk = require('../models/Spk');
 const SolarPrice = require('../models/SolarPrice');
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
