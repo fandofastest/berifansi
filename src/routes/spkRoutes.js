@@ -1,5 +1,8 @@
 const express = require('express');
-const {spkcontroller} = require('../controllers/spkcontroller');
+// Change this line
+
+// To this
+const spkController = require('../controllers/spkController');
 const { authenticate, isAdmin } = require('../middleware/auth');
 const { body } = require('express-validator'); // Add this import
 
