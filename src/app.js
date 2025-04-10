@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const initSuperAdmin = require('./utils/initSuperAdmin');
 const spkRoutes = require('./routes/spkRoutes');
+const solarPriceRoutes = require('./routes/solarPriceRoutes');
+const locationRoutes = require('./routes/locationRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -54,6 +56,8 @@ app.use('/api/rates', rateRoutes);
 app.use('/api/spks', spkRoutes);
 app.use('/api/item-costs', itemCostRoutes);
 app.use('/api/material-units', materialUnitRoutes); // Register MaterialUnit routes
+app.use('/api/solar-prices', solarPriceRoutes); // Add this line
+app.use('/api/locations', locationRoutes); // Add this line
 
 // Root route
 app.get('/', (req, res) => {

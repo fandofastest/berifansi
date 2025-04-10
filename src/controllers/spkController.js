@@ -1,85 +1,81 @@
-const Spk = require('../models/Spk');
+const Spk = require('../models/spk');
+const SolarPrice = require('../models/SolarPrice');
 const Item = require('../models/Item');
 const { validationResult } = require('express-validator');
-
+const mongoose = require('mongoose');
 // Get all SPKs
 exports.getAllSpks = async (req, res) => {
   try {
     const spks = await Spk.find()
+      .sort({ createdAt: -1 }) // Sort by createdAt in descending order
       .populate({
         path: 'items.item',
         populate: {
           path: 'category subCategory'
         }
-      });
+      })
+      .populate('location');
+
     res.status(200).json(spks);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Helper function to get latest solar price
+const getLatestSolarPrice = async () => {
+  const latestPrice = await SolarPrice.findOne().sort({ createdAt: -1 });
+  return latestPrice ? latestPrice.price : 0;
+};
+
 // Create new SPK
 exports.createSpk = async (req, res) => {
   try {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request body:', req.body); // Log incoming request
+    const { spkNo, spkTitle, projectStartDate, projectEndDate, items, location } = req.body;
     
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    // Pre-process items to add unitRate from the item's rate
-    const processedItems = [];
-    
-    for (const spkItem of req.body.items) {
-      console.log('Processing item:', spkItem.item);
-      
-      const item = await Item.findById(spkItem.item);
-      if (!item) {
-        console.log('Item not found:', spkItem.item);
-        return res.status(400).json({ message: `Item ${spkItem.item} not found` });
-      }
-      console.log('Found item:', item.itemCode);
-
-      const selectedRate = item.rates.find(rate => rate.rateCode === spkItem.rateCode);
-      if (!selectedRate) {
-        console.log('Rate not found:', spkItem.rateCode, 'for item:', item.itemCode);
-        return res.status(400).json({ 
-          message: `Rate code ${spkItem.rateCode} not found for item ${item.itemCode}` 
-        });
-      }
-      console.log('Found rate:', selectedRate);
-      
-      // Add unitRate from item's rate
-      processedItems.push({
-        ...spkItem,
-        unitRate: {
-          nonRemoteAreas: selectedRate.nonRemoteAreas,
-          remoteAreas: selectedRate.remoteAreas
-        }
+    // Validate required fields
+    if (!spkNo || !spkTitle || !projectStartDate || !projectEndDate || !location) {
+      console.error('Missing required fields');
+      return res.status(400).json({ 
+        message: 'All fields are required: spkNo, spkTitle, projectStartDate, projectEndDate, location' 
       });
     }
-    
-    // Replace the items with processed items that include unitRate
-    req.body.items = processedItems;
-    console.log('Processed items:', JSON.stringify(req.body.items, null, 2));
 
-    const newSpk = new Spk(req.body);
-    console.log('SPK before save:', newSpk);
-    
+    // Validate location as valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(location)) {
+      console.error('Invalid location ID:', location);
+      return res.status(400).json({ message: 'Invalid location ID' });
+    }
+
+    // Validate date format
+    if (isNaN(Date.parse(projectStartDate)) || isNaN(Date.parse(projectEndDate))) {
+      console.error('Invalid date format');
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    // Validate project dates
+    if (new Date(projectStartDate) > new Date(projectEndDate)) {
+      console.error('Invalid project dates');
+      return res.status(400).json({ message: 'projectStartDate must be before projectEndDate' });
+    }
+
+    const latestSolarPrice = await getLatestSolarPrice();
+    console.log('Latest solar price:', latestSolarPrice);
+
+    const newSpk = new Spk({
+      spkNo,
+      spkTitle,
+      projectStartDate: new Date(projectStartDate),
+      projectEndDate: new Date(projectEndDate),
+      items: items || [],
+      location: location,
+      solarPrice: latestSolarPrice
+    });
+
     const savedSpk = await newSpk.save();
-    console.log('SPK saved with ID:', savedSpk._id);
-    
-    const populatedSpk = await Spk.findById(savedSpk._id)
-      .populate({
-        path: 'items.item',
-        populate: {
-          path: 'category subCategory'
-        }
-      });
-
-    res.status(201).json(populatedSpk);
+    console.log('SPK created successfully:', savedSpk._id);
+    res.status(201).json(savedSpk);
   } catch (error) {
     console.error('Error creating SPK:', error);
     res.status(400).json({ 
@@ -91,43 +87,25 @@ exports.createSpk = async (req, res) => {
 
 // Update SPK
 exports.updateSpk = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
   try {
-    if (req.body.items) {
-      // Validate all items and rates exist
-      for (const spkItem of req.body.items) {
-        const item = await Item.findById(spkItem.item);
-        if (!item) {
-          return res.status(400).json({ message: `Item ${spkItem.item} not found` });
-        }
+    const { id } = req.params;
+    const updateData = req.body;
 
-        const rateExists = item.rates.some(rate => rate.rateCode === spkItem.rateCode);
-        if (!rateExists) {
-          return res.status(400).json({ 
-            message: `Rate code ${spkItem.rateCode} not found for item ${item.itemCode}` 
-          });
-        }
-      }
+    // Get latest solar price if updating
+    if (Object.keys(updateData).length > 0) {
+      updateData.solarPrice = await getLatestSolarPrice();
     }
 
     const updatedSpk = await Spk.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      id,
+      updateData,
       { new: true, runValidators: true }
-    ).populate({
-      path: 'items.item',
-      populate: {
-        path: 'category subCategory'
-      }
-    });
+    );
 
     if (!updatedSpk) {
       return res.status(404).json({ message: 'SPK not found' });
     }
+
     res.status(200).json(updatedSpk);
   } catch (error) {
     res.status(400).json({ message: error.message });

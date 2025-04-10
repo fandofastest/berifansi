@@ -36,6 +36,16 @@ const spkSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     default: 0
+  },
+  location: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Location',
+    required: true
+  },
+  solarPrice: {
+    type: Number,
+    required: true,
+    min: 0
   }
 }, { 
   timestamps: true 
