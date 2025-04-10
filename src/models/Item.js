@@ -45,14 +45,4 @@ const itemSchema = new mongoose.Schema({
   rates: [itemRateSchema]
 }, { timestamps: true });
 
-itemSchema.pre('save', function(next) {
-  if (this.isModified('rates')) {
-    const activeRates = this.rates.filter(rate => rate.isActive);
-    if (activeRates.length > 1) {
-      return next(new Error('Only one rate can be active at a time'));
-    }
-  }
-  next();
-});
-
 module.exports = mongoose.model('Item', itemSchema);

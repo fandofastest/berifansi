@@ -111,34 +111,62 @@ exports.getItemsBySubCategory = async (req, res) => {
 
 exports.addItemRate = async (req, res) => {
   try {
-    const { rateCode, nonRemoteAreas, remoteAreas } = req.body;
+    console.log('Request body:', req.body);
+    const { rateCode, nonRemoteAreas, remoteAreas, isActive = false } = req.body;
     
-    // Check if rate exists
+    if (!rateCode || !nonRemoteAreas || !remoteAreas) {
+      console.error('Missing required fields');
+      return res.status(400).json({ 
+        message: 'Missing required fields: rateCode, nonRemoteAreas, remoteAreas' 
+      });
+    }
+
     const rate = await Rate.findOne({ rateCode });
     if (!rate) {
+      console.error(`Rate code not found: ${rateCode}`);
       return res.status(404).json({ message: 'Rate code not found' });
     }
 
     const item = await Item.findById(req.params.id);
     if (!item) {
+      console.error(`Item not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    // Check if rate already exists for this item
     if (item.rates.some(r => r.rateCode === rateCode)) {
-      return res.status(400).json({ message: 'Rate already exists for this item' });
+      console.error(`Rate already exists for item: ${rateCode}`);
+      return res.status(400).json({ 
+        message: 'Rate already exists for this item',
+        existingRates: item.rates.map(r => r.rateCode) 
+      });
     }
 
-    item.rates.push({
+    // If new rate is being set as active, deactivate all other rates first
+    if (isActive) {
+      item.rates.forEach(rate => {
+        rate.isActive = false;
+      });
+    }
+
+    const newRate = {
       rateCode,
-      nonRemoteAreas,
-      remoteAreas
-    });
+      nonRemoteAreas: Number(nonRemoteAreas),
+      remoteAreas: Number(remoteAreas),
+      isActive: typeof isActive === 'boolean' ? isActive : false
+    };
+
+    item.rates.push(newRate);
+    console.log('Adding new rate:', newRate);
 
     const updatedItem = await item.save();
+    console.log('Successfully added rate');
     res.status(200).json(updatedItem);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error in addItemRate:', error);
+    res.status(400).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
