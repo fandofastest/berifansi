@@ -23,6 +23,7 @@ const materialUnitRoutes = require('./routes/materialUnitRoutes'); // Import Mat
 
 // Initialize express app
 const app = express();
+app.use(cors())
 
 // Set up rate limiter: maximum of 100 requests per minute
 const limiter = rateLimit({
@@ -38,15 +39,6 @@ app.use(helmet());
 app.use(express.json());
 app.use(limiter);
 
-const corsOptions = {
-  origin: [process.env.FE_URL],
-  allowedHeaders: ["Content-Type", "Authorization", "Access-Control-Allow-Methods", "Access-Control-Request-Headers"],
-  credentials: true,
-  enablePreflight: true
-}
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions))
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/projectManager')
   .then(() => {
