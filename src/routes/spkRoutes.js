@@ -16,13 +16,13 @@ const statusValidation = [
 const router = express.Router();
 
 // Protected routes - Admin only
-router.post('/', authenticate, isAdmin, spkcontroller.createSpk);
-router.put('/:id', authenticate, isAdmin, spkcontroller.updateSpk);
+router.post('/', authenticate, isAdmin, spkController.createSpk);
+router.put('/:id', authenticate, isAdmin, spkController.updateSpk);
 
 // Public routes
-router.get('/', spkcontroller.getAllSpks);
-router.get('/:id', spkcontroller.getSpkById);
-router.patch('/:id/status', authenticate, isAdmin, statusValidation, spkcontroller.updateSpkStatus);
-router.delete('/:id', authenticate, isAdmin, spkcontroller.deleteSpk);
+router.get('/', spkController.getAllSpks);
+router.get('/:id', spkController.getSpkById);
+router.patch('/:id/status', authenticate, isAdmin, statusValidation, spkController.updateSpkStatus);
+router.delete('/:id', authenticate, isAdmin, spkController.deleteSpk);
 
 module.exports = router;
