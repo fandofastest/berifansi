@@ -1,6 +1,5 @@
 const Spk = require('../models/spk');
 const SolarPrice = require('../models/SolarPrice');
-const Item = require('../models/Item');
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 // Get all SPKs
