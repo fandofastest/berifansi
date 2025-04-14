@@ -15,7 +15,7 @@ const itemCostSchema = new mongoose.Schema({
   },
   kategori: {
     type: String,
-    enum: ['manpower', 'equipment', 'material', 'security'],
+    enum: ['manpower', 'equipment', 'material', 'security','other'],
     required: true,
   },
   details: {
@@ -36,10 +36,14 @@ const itemCostSchema = new mongoose.Schema({
     },
     equipmentDetails: {
       fuelConsumptionPerHour: {
-        type: Number, // Misalnya, liter per jam konsumsi BBM.
+        type: Number,
+        min: 0,
+        get: v => v ? parseFloat(v.toFixed(2)) : v,
+        set: v => v ? parseFloat(parseFloat(v).toFixed(2)) : v
       },
-      gpsCostPerDay: {
-        type: Number, // Biaya GPS per hari.
+      gpsCostPerMonth: {
+        type: Number,
+        min: 0
       }
     },
     materialDetails: {

@@ -38,7 +38,7 @@ const itemCostValidation = [
       .if(body('kategori').equals('equipment'))
       .optional({ checkFalsy: true }) // Make optional or required as needed
       .isNumeric().withMessage('Fuel consumption must be a number'),
-  body('details.equipmentDetails.gpsCostPerDay')
+  body('details.equipmentDetails.gpsCostPerMonth')
       .if(body('kategori').equals('equipment'))
       .optional({ checkFalsy: true }) // Make optional or required as needed
       .isNumeric().withMessage('GPS cost must be a number'),
@@ -59,6 +59,7 @@ const itemCostValidation = [
 router.post('/', authenticate, isAdmin, itemCostValidation, itemCostController.createItemCost);
 router.get('/', authenticate, itemCostController.getAllItemCosts);
 router.get('/:id', authenticate, itemCostController.getItemCostById);
+router.get('/category/:category', itemCostController.getItemCostByCategory);
 router.put('/:id', authenticate, isAdmin, itemCostValidation, itemCostController.updateItemCost);
 router.delete('/:id', authenticate, isAdmin, itemCostController.deleteItemCost);
 

@@ -114,7 +114,7 @@ exports.addItemRate = async (req, res) => {
     console.log('Request body:', req.body);
     const { rateCode, nonRemoteAreas, remoteAreas, isActive = false } = req.body;
     
-    if (!rateCode || !nonRemoteAreas || !remoteAreas) {
+    if (!rateCode) {
       console.error('Missing required fields');
       return res.status(400).json({ 
         message: 'Missing required fields: rateCode, nonRemoteAreas, remoteAreas' 
@@ -200,18 +200,38 @@ exports.updateItemRate = async (req, res) => {
 exports.removeItemRate = async (req, res) => {
   try {
     const { rateCode } = req.params;
+    console.log('Attempting to remove rate:', rateCode, 'from item:', req.params.id);
     
     const item = await Item.findById(req.params.id);
     if (!item) {
+      console.error('Item not found:', req.params.id);
       return res.status(404).json({ message: 'Item not found' });
     }
 
+    // Check if rate exists before removing
+    const rateExists = item.rates.some(r => r.rateCode === rateCode);
+    if (!rateExists) {
+      console.error('Rate not found:', rateCode);
+      return res.status(404).json({ message: 'Rate not found for this item' });
+    }
+
+    // Remove the rate
     item.rates = item.rates.filter(r => r.rateCode !== rateCode);
-    const updatedItem = await item.save();
+    console.log('Rate removed, saving item...');
     
-    res.status(200).json(updatedItem);
+    const updatedItem = await item.save();
+    console.log('Item updated successfully');
+    
+    res.status(200).json({
+      message: 'Rate removed successfully',
+      item: updatedItem
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error removing rate:', error);
+    res.status(400).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

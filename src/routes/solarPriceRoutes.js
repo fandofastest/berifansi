@@ -1,16 +1,15 @@
 const express = require('express');
 const solarPriceController = require('../controllers/solarPriceController');
-const { authenticate, isAdmin } = require('../middleware/auth');
-
 const router = express.Router();
 
-// Protected routes - Admin only
-router.post('/', authenticate, isAdmin, solarPriceController.createSolarPrice);
-router.put('/:id', authenticate, isAdmin, solarPriceController.updateSolarPrice);
-router.delete('/:id', authenticate, isAdmin, solarPriceController.deleteSolarPrice);
-
-// Public routes
+router.post('/', solarPriceController.createSolarPrice);
 router.get('/', solarPriceController.getAllSolarPrices);
-router.get('/latest', solarPriceController.getLatestSolarPrice);
+// Add this route before the /:id route
+router.get('/current-price', solarPriceController.getCurrentPrice);
+
+// Keep this route after
+router.get('/:id', solarPriceController.getSolarPriceById);
+router.put('/:id', solarPriceController.updateSolarPrice);
+router.delete('/:id', solarPriceController.deleteSolarPrice);
 
 module.exports = router;

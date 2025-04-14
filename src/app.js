@@ -4,10 +4,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const path = require('path'); // Add this line
 const initSuperAdmin = require('./utils/initSuperAdmin');
 const spkRoutes = require('./routes/spkRoutes');
 const solarPriceRoutes = require('./routes/solarPriceRoutes');
 const locationRoutes = require('./routes/locationRoutes');
+const spkProgressRoutes = require('./routes/spkProgressRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +41,8 @@ app.use(helmet());
 
 app.use(express.json());
 app.use(limiter);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/thumbnails', express.static(path.join(__dirname, '../thumbnails')));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/projectManager')
@@ -57,8 +62,10 @@ app.use('/api/rates', rateRoutes);
 app.use('/api/spks', spkRoutes);
 app.use('/api/item-costs', itemCostRoutes);
 app.use('/api/material-units', materialUnitRoutes); // Register MaterialUnit routes
-app.use('/api/solar-prices', solarPriceRoutes); // Add this line
+app.use('/api/solar-prices', solarPriceRoutes);
 app.use('/api/locations', locationRoutes); // Add this line
+app.use('/api/spk-progress', spkProgressRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Root route
 app.get('/', (req, res) => {
