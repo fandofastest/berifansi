@@ -24,13 +24,21 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
     const filetypes = /jpeg|jpg|png/;
-    const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    
+    // Log fil10 information
+    console.log('File upload attempt:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      extension: path.extname(file.originalname).toLowerCase()
+    });
 
-    if (mimetype && extname) {
+    // Accept file if extension is valid, regardless of mimetype
+    if (extname) {
       return cb(null, true);
     }
-    cb('Error: File upload only supports the following filetypes - ' + filetypes);
+    
+    cb(`Error: File upload only supports images with extensions: .jpeg, .jpg, .png. Received file with extension: ${path.extname(file.originalname)}`);
   }
 }).single('image');
 
