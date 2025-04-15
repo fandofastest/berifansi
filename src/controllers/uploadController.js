@@ -23,14 +23,21 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
+    // Check file size before processing (additional check)
+    const fileSize = parseInt(req.headers['content-length']);
+    if (fileSize > 5 * 1024 * 1024) {
+      return cb(new Error('File size exceeds 5MB limit'));
+    }
+    
     const filetypes = /jpeg|jpg|png/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     
-    // Log fil10 information
+    // Log file information
     console.log('File upload attempt:', {
       originalname: file.originalname,
       mimetype: file.mimetype,
-      extension: path.extname(file.originalname).toLowerCase()
+      extension: path.extname(file.originalname).toLowerCase(),
+      fileSize: fileSize ? (fileSize / 1024 / 1024).toFixed(2) + 'MB' : 'unknown'
     });
 
     // Accept file if extension is valid, regardless of mimetype
@@ -46,12 +53,19 @@ exports.uploadImage = async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       console.error('Upload error:', err);
+      // Check if error is related to file size
+      if (err.message && err.message.includes('File size exceeds')) {
+        return res.status(413).json({ 
+          success: false,
+          message: 'File size exceeds the 5MB limit'
+        });
+      }
       return res.status(400).json({ 
         success: false,
-        message: err
+        message: err.toString()
       });
     }
-
+    
     if (!req.file) {
       console.error('No file uploaded');
       return res.status(400).json({

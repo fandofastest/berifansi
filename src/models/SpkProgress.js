@@ -11,23 +11,39 @@ const costUsedSchema = new mongoose.Schema({
   details: {
     manpower: {
       jumlahOrang: { type: Number, default: 0 },
-      jamKerja: { type: Number, default: 0 }
+      jamKerja: { type: Number, default: 0 },
+      costPerHour: { type: Number, default: 0 }
     },
     equipment: {
-      jumlah: { type: Number, default: 0 }, // Add this line
+      jumlah: { type: Number, default: 0 },
+      jumlahUnit: { type: Number, default: 0 },
+      jamKerja: { type: Number, default: 0 },
       jamPakai: { type: Number, default: 0 },
-      jumlahSolar: { type: Number, default: 0 }
+      jumlahSolar: { type: Number, default: 0 },
+      costPerHour: { type: Number, default: 0 },
+      fuelUsage: { type: Number, default: 0 },
+      fuelPrice: { type: Number, default: 0 }
     },
     material: {
       materialUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'MaterialUnit' },
-      jumlahUnit: { type: Number, default: 0 }
+      jumlahUnit: { type: Number, default: 0 },
+      pricePerUnit: { type: Number, default: 0 }
     },
     security: {
-      nominal: { type: Number, default: 0 }
+      nominal: { type: Number, default: 0 },
+      jumlahOrang: { type: Number, default: 0 },
+      dailyCost: { type: Number, default: 0 }
     },
     other: {
       nominal: { type: Number, default: 0 }
     }
+  },
+  itemCostDetails: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  totalCost: {
+    type: Number,
+    default: 0
   }
 }, { _id: false });
 
@@ -56,6 +72,10 @@ const spkProgressSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Spk',
     required: true
+  },
+  mandor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   progressItems: [spkProgressItemSchema],
   progressDate: {
@@ -93,6 +113,11 @@ const spkProgressSchema = new mongoose.Schema({
 // Pre-save middleware
 spkProgressSchema.pre('save', async function(next) {
   try {
+    // Convert mandor string ID to ObjectId if needed
+    if (this.mandor && typeof this.mandor === 'string' && mongoose.Types.ObjectId.isValid(this.mandor)) {
+      this.mandor = new mongoose.Types.ObjectId(this.mandor);
+    }
+    
     const ItemCost = mongoose.model('ItemCost');
     
     // Calculate total progress items
@@ -106,52 +131,52 @@ spkProgressSchema.pre('save', async function(next) {
     // Calculate total cost used for each cost entry
     if (this.costUsed && this.costUsed.length > 0) {
       for (const cost of this.costUsed) {
+        let costAmount = 0;
         const costDoc = await ItemCost.findById(cost.itemCost);
+        
         if (costDoc) {
-          switch(costDoc.kategori) {
+          const category = costDoc.kategori || (cost.itemCostDetails ? cost.itemCostDetails.category : null);
+          
+          switch(category) {
             case 'manpower':
-              this.costUsed.unit = 'man-hour';
-              this.totalCostUsed = (costDoc.details.manpowerDetails?.costPerHour || 0) * 
-                (this.costUsed.details.manpower?.jamKerja || 0) +
-                (costDoc.details.manpowerDetails?.costPerMonth || 0) * 
-                (this.costUsed.details.manpower?.jumlahOrang || 0);
+              cost.unit = 'man-hour';
+              costAmount = (cost.details.manpower?.costPerHour || 0) * 
+                (cost.details.manpower?.jamKerja || 0) *
+                (cost.details.manpower?.jumlahOrang || 0);
               break;
   
-              case 'equipment':
-                this.costUsed.unit = 'equipment-hour';
-                this.totalCostUsed = (costDoc.details.equipmentDetails?.costPerHour || 0) * 
-                  (this.costUsed.details.equipment?.jamPakai || 0) *
-                  (this.costUsed.details.equipment?.jumlah || 0) + // Add quantity multiplier
-                  (costDoc.details.equipmentDetails?.fuelConsumptionPerHour || 0) * 
-                  (this.costUsed.details.equipment?.jumlahSolar || 0);
-                break;
+            case 'equipment':
+              cost.unit = 'equipment-hour';
+              costAmount = (cost.details.equipment?.costPerHour || 0) * 
+                (cost.details.equipment?.jamKerja || 0) *
+                (cost.details.equipment?.jumlahUnit || cost.details.equipment?.jumlah || 0) +
+                (cost.details.equipment?.fuelUsage || 0) * 
+                (cost.details.equipment?.fuelPrice || 0);
+              break;
   
             case 'material':
-              this.costUsed.unit = costDoc.details.materialDetails?.materialUnit || 'unit';
-              this.totalCostUsed = (costDoc.details.materialDetails?.pricePerUnit || 0) * 
-                (this.costUsed.details.material?.jumlahUnit || 0);
+              cost.unit = 'unit';
+              costAmount = (cost.details.material?.pricePerUnit || 0) * 
+                (cost.details.material?.jumlahUnit || 0);
               break;
   
             case 'security':
-              this.costUsed.unit = 'day';
-              this.totalCostUsed = this.costUsed.details.security?.nominal || 0;
+              cost.unit = 'day';
+              costAmount = (cost.details.security?.dailyCost || 0) *
+                (cost.details.security?.jumlahOrang || 0);
               break;
   
             default:
-              this.costUsed.unit = 'nominal';
-              this.totalCostUsed = this.costUsed.details.other?.nominal || 0;
+              cost.unit = 'nominal';
+              costAmount = cost.details.other?.nominal || 0;
           }
-  
-          // Clean up irrelevant details
-          const categories = ['manpower', 'equipment', 'material', 'security', 'other'];
-          categories.forEach(cat => {
-            if (cat !== costDoc.kategori) {
-              this.costUsed.details[cat] = undefined;
-            }
-          });
+          
+          // Store the calculated cost
+          cost.totalCost = costAmount;
+          
+          // Add to the total
+          this.totalCostUsed += costAmount;
         }
-        // Add the individual cost to total
-        this.totalCostUsed += cost.totalCostUsed;
       }
     }
 
@@ -159,6 +184,7 @@ spkProgressSchema.pre('save', async function(next) {
     this.grandTotal = this.totalProgressItem + this.totalCostUsed;
     next();
   } catch (error) {
+    console.error('Error in pre-save middleware:', error);
     next(error);
   }
 });
